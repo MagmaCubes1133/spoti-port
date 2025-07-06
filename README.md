@@ -33,6 +33,13 @@ The credentials you enter will be saved in a local `.env` file for future use.
    need to do this once. No Google Cloud project or OAuth credentials are
    required.
 
+   Be sure to copy the raw HTTP request headers from an authenticated request
+   to `music.youtube.com` (for example a `/browse` request) via your browser's
+   developer tools. The file should include values like `cookie`,
+   `x-goog-authuser` and an `Authorization` header containing `SAPISIDHASH`.
+   Supplying OAuth JSON or other data will cause errors such as
+   `oauth JSON provided via auth argument` when the import script starts.
+
 
 4. Import the library into YouTube Music. The command now asks which parts of
    your library you want to sync—**Liked Songs**, specific playlists, or
