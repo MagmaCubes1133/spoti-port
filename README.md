@@ -14,7 +14,7 @@
 pip install -r requirements.txt
 ```
 
-2. Export your Spotify library. On first run you will be asked to authorize the application in your browser:
+2. Export your Spotify library. On first run a browser window will open so you can log into Spotify and authorize the app:
 
 ```bash
 python -m spotiport.export_spotify
@@ -22,7 +22,7 @@ python -m spotiport.export_spotify
 
 This creates a `spotify_library.json` file containing your liked songs and playlists.
 
-3. Obtain YouTube credentials by creating an OAuth client in the Google Developer Console and save the file as `client_secret.json` in the project root.
+3. Obtain YouTube credentials by creating an OAuth client in the Google Developer Console and save the file as `client_secret.json` in the project root. When importing, your default browser will open for Google sign in.
 
 4. Import the library into YouTube Music:
 

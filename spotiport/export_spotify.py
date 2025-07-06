@@ -10,7 +10,7 @@ SCOPE = "user-library-read playlist-read-private playlist-read-collaborative"
 
 def get_spotify_client() -> spotipy.Spotify:
     """Authenticate and return a Spotify client using OAuth."""
-    auth = SpotifyOAuth(scope=SCOPE)
+    auth = SpotifyOAuth(scope=SCOPE, open_browser=True)
     return spotipy.Spotify(auth_manager=auth)
 
 
@@ -70,6 +70,7 @@ def export_playlists(sp: spotipy.Spotify) -> List[Dict]:
 
 def export_library(output_file: str = "spotify_library.json") -> None:
     """Export liked songs and playlists to a JSON file."""
+    print("A browser window will open to authorize Spotify access.")
     sp = get_spotify_client()
     data = {
         "liked_songs": export_liked_tracks(sp),

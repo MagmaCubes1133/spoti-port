@@ -15,7 +15,9 @@ YT_SCOPE = ["https://www.googleapis.com/auth/youtube"]
 def get_youtube_client() -> any:
     """Authenticate and return a YouTube API client."""
     flow = InstalledAppFlow.from_client_secrets_file("client_secret.json", YT_SCOPE)
-    creds = flow.run_console()
+    # Open the user's browser for a graphical login and run a local server to
+    # receive the authorization code.
+    creds = flow.run_local_server(port=0)
     return build("youtube", "v3", credentials=creds)
 
 
@@ -99,6 +101,7 @@ def port_playlist(youtube, playlist: Dict, failed: List[Dict]) -> None:
 
 
 def import_library(library_file: str, failed_log: str = FAILED_LOG_FILE) -> None:
+    print("A browser window will open to authorize your Google account.")
     youtube = get_youtube_client()
     data = json.loads(Path(library_file).read_text())
     failed: List[Dict] = []
