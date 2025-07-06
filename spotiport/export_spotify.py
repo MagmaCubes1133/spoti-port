@@ -43,6 +43,7 @@ def get_spotify_client() -> spotipy.Spotify:
     client_secret = os.getenv("SPOTIPY_CLIENT_SECRET")
     if not client_id or not client_secret:
         _prompt_for_credentials()
+
     auth = SpotifyOAuth(scope=SCOPE, open_browser=True)
     return spotipy.Spotify(auth_manager=auth)
 

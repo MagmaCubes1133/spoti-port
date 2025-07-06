@@ -14,7 +14,9 @@
 pip install -r requirements.txt
 ```
 
+
 2. Export your Spotify library. On first run a browser window will open so you can log into Spotify and authorize the app. If Spotify API credentials are not found, you will be prompted to enter them. You can obtain these by registering an application in the [Spotify Developer Dashboard](https://developer.spotify.com/dashboard):
+
 
 ```bash
 python -m spotiport.export_spotify
