@@ -222,28 +222,51 @@ def import_library(library_file: str, failed_log: str = FAILED_LOG_FILE) -> None
     data = json.loads(Path(library_file).read_text())
     failed: List[Dict] = []
 
-    # Sync liked songs first
-    if data.get("liked_songs"):
-        print("Syncing liked songs...")
-        sync_liked_songs(youtube, data["liked_songs"], failed)
-
+    liked_songs = data.get("liked_songs", [])
     playlists = data.get("playlists", [])
+    done_liked = False
     remaining = playlists[:]
-    while remaining:
-        print("Available playlists:")
-        for idx, pl in enumerate(remaining, 1):
-            print(f"{idx}. {_decode_string(pl['name'])}")
-        choice = input("Select a playlist number to port (blank to finish): ").strip()
+
+    while True:
+        options: List[tuple[str, str | Dict]] = []
+        if liked_songs and not done_liked:
+            options.append(("Liked Songs", "liked"))
+        for pl in remaining:
+            options.append((_decode_string(pl["name"]), pl))
+        if not options:
+            break
+
+        print("What would you like to sync?")
+        print("0. Do all")
+        for idx, (name, _) in enumerate(options, 1):
+            print(f"{idx}. {name}")
+
+        choice = input("Select an option number (blank to finish): ").strip()
         if not choice:
+            break
+        if choice == "0":
+            if liked_songs and not done_liked:
+                print("Syncing liked songs...")
+                sync_liked_songs(youtube, liked_songs, failed)
+            for pl in remaining:
+                port_playlist(youtube, pl, failed)
             break
         try:
             sel = int(choice) - 1
-            playlist = remaining.pop(sel)
+            _, selected = options[sel]
         except (ValueError, IndexError):
             print("Invalid selection")
             continue
-        port_playlist(youtube, playlist, failed)
-        again = input("Port another playlist? [y/N]: ").strip().lower()
+
+        if selected == "liked":
+            print("Syncing liked songs...")
+            sync_liked_songs(youtube, liked_songs, failed)
+            done_liked = True
+        else:
+            port_playlist(youtube, selected, failed)
+            remaining.remove(selected)
+
+        again = input("Sync another item? [y/N]: ").strip().lower()
         if again != "y":
             break
 
