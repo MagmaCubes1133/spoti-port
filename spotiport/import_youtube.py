@@ -32,10 +32,14 @@ def get_youtube_client() -> any:
             "Google Developer Console and download the JSON file to this "
             "directory."
         )
-    flow = InstalledAppFlow.from_client_secrets_file("client_secret.json", YT_SCOPE)
+    # Use a fixed redirect URI so it can be whitelisted in the Google console.
+    redirect_uri = "http://localhost:8080/"
+    flow = InstalledAppFlow.from_client_secrets_file(
+        "client_secret.json", YT_SCOPE, redirect_uri=redirect_uri
+    )
     # Open the user's browser for a graphical login and run a local server to
-    # receive the authorization code.
-    creds = flow.run_local_server(port=0)
+    # receive the authorization code on the same port each time.
+    creds = flow.run_local_server(port=8080)
     return build("youtube", "v3", credentials=creds)
 
 

@@ -25,7 +25,7 @@ python -m spotiport.export_spotify
 This creates a `spotify_library.json` file containing your liked songs and playlists.
 The credentials you enter will be saved in a local `.env` file for future use.
 
-3. Obtain YouTube credentials by creating an OAuth client in the Google Developer Console and save the file as `client_secret.json` in the project root. When importing, your default browser will open for Google sign in.
+3. Obtain YouTube credentials by creating an OAuth client in the Google Developer Console and save the file as `client_secret.json` in the project root. When importing, your default browser will open for Google sign in. **Register `http://localhost:8080/` as an authorized redirect URI** so the authentication flow can use a fixed callback URL.
 
 4. Import the library into YouTube Music:
 
