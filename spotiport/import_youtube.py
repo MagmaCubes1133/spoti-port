@@ -5,7 +5,9 @@ from typing import Dict, List
 
 FAILED_LOG_FILE = "failed_tracks.json"
 
+
 from ytmusicapi import YTMusic, setup
+
 
 
 def _decode_string(text: str) -> str:
@@ -32,6 +34,7 @@ def get_youtube_client() -> YTMusic:
     )
     setup(filepath=headers_file)
     return YTMusic(headers_file)
+
 
 
 def search_video(youtube: YTMusic, query: str, duration_ms: int) -> str | None:
@@ -63,7 +66,6 @@ def duration_to_seconds(duration: str) -> int:
     for p in parts:
         seconds = seconds * 60 + int(p)
     return seconds
-
 
 def create_playlist(youtube: YTMusic, title: str) -> str | None:
     """Create a new playlist and return its ID."""
