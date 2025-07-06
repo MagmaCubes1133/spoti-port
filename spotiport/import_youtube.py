@@ -5,9 +5,7 @@ from typing import Dict, List
 
 FAILED_LOG_FILE = "failed_tracks.json"
 
-from google_auth_oauthlib.flow import InstalledAppFlow
-from googleapiclient.discovery import build
-from googleapiclient.errors import HttpError
+from ytmusicapi import YTMusic, setup
 
 
 def _decode_string(text: str) -> str:
@@ -20,127 +18,86 @@ def _decode_string(text: str) -> str:
     text = html.unescape(text)
     return text
 
-# YouTube API scope for managing playlists
-YT_SCOPE = ["https://www.googleapis.com/auth/youtube"]
 
 
-def get_youtube_client() -> any:
-    """Authenticate and return a YouTube API client."""
-    if not Path("client_secret.json").exists():
-        raise RuntimeError(
-            "client_secret.json not found. Create OAuth credentials in the "
-            "Google Developer Console and download the JSON file to this "
-            "directory."
-        )
-    # Use a fixed redirect URI so it can be whitelisted in the Google console.
-    redirect_uri = "http://localhost:8080/"
-    flow = InstalledAppFlow.from_client_secrets_file(
-        "client_secret.json", YT_SCOPE, redirect_uri=redirect_uri
+def get_youtube_client() -> YTMusic:
+    """Authenticate and return a YTMusic client using request headers."""
+    headers_file = "headers_auth.json"
+    if Path(headers_file).exists():
+        return YTMusic(headers_file)
+
+    print(
+        "No YouTube authentication headers found. "
+        "Follow the instructions to paste the headers from your browser."
     )
-    # Open the user's browser for a graphical login and run a local server to
-    # receive the authorization code on the same port each time.
-    creds = flow.run_local_server(port=8080)
-    return build("youtube", "v3", credentials=creds)
+    setup(filepath=headers_file)
+    return YTMusic(headers_file)
 
 
-def search_video(youtube, query: str, duration_ms: int) -> str | None:
-    """Search for a YouTube video matching the query and closest in length."""
-    try:
-        search_response = youtube.search().list(
-            q=query,
-            type="video",
-            part="id",
-            maxResults=5,
-        ).execute()
-    except HttpError as err:
-        print(f"YouTube search failed: {err}")
+def search_video(youtube: YTMusic, query: str, duration_ms: int) -> str | None:
+    """Search YouTube Music for the closest matching track."""
+    results = youtube.search(query, filter="songs") or youtube.search(query, filter="videos")
+    if not results:
         return None
-
     best_video = None
     best_diff = None
-    video_ids = [item["id"]["videoId"] for item in search_response.get("items", [])]
-    if not video_ids:
-        return None
-    details = youtube.videos().list(part="contentDetails", id=",".join(video_ids)).execute()
-    for item in details.get("items", []):
-        vid = item["id"]
-        duration = item["contentDetails"]["duration"]
-        seconds = iso8601_duration_to_seconds(duration)
+    for item in results[:5]:
+        vid = item.get("videoId")
+        dur = item.get("duration")
+        if not vid or not dur:
+            continue
+        seconds = duration_to_seconds(dur)
         diff = abs(seconds * 1000 - duration_ms)
+        if diff <= 10000:
+            return vid
         if best_diff is None or diff < best_diff:
             best_diff = diff
             best_video = vid
     return best_video
 
 
-def iso8601_duration_to_seconds(duration: str) -> int:
-    """Convert ISO8601 duration to seconds."""
-    import isodate
+def duration_to_seconds(duration: str) -> int:
+    """Convert a ``MM:SS`` or ``HH:MM:SS`` duration string to seconds."""
+    parts = duration.split(":")
+    seconds = 0
+    for p in parts:
+        seconds = seconds * 60 + int(p)
+    return seconds
 
-    td = isodate.parse_duration(duration)
-    return int(td.total_seconds())
 
-
-def create_playlist(youtube, title: str) -> str | None:
+def create_playlist(youtube: YTMusic, title: str) -> str | None:
     """Create a new playlist and return its ID."""
-    body = {
-        "snippet": {"title": title},
-        "status": {"privacyStatus": "private"},
-    }
     try:
-        response = youtube.playlists().insert(part="snippet,status", body=body).execute()
-        return response["id"]
-    except HttpError as err:
+        return youtube.create_playlist(title, "Created by spoti-port")
+    except Exception as err:
         print(f"Failed to create playlist: {err}")
         return None
 
 
-def get_playlist_by_name(youtube, title: str) -> str | None:
+def get_playlist_by_name(youtube: YTMusic, title: str) -> str | None:
     """Return playlist ID if a playlist with the given title exists."""
-    page_token = None
-    while True:
-        response = youtube.playlists().list(
-            part="snippet",
-            mine=True,
-            maxResults=50,
-            pageToken=page_token,
-        ).execute()
-        for item in response.get("items", []):
-            if item["snippet"].get("title") == title:
-                return item["id"]
-        page_token = response.get("nextPageToken")
-        if not page_token:
-            break
+    playlists = youtube.get_library_playlists(limit=100)
+    for pl in playlists:
+        if pl.get("title") == title:
+            return pl.get("playlistId")
     return None
 
 
-def get_playlist_items(youtube, playlist_id: str) -> List[str]:
+def get_playlist_items(youtube: YTMusic, playlist_id: str) -> List[str]:
     """Return a list of video IDs currently in the playlist."""
     items: List[str] = []
-    page_token = None
-    while True:
-        response = youtube.playlistItems().list(
-            part="contentDetails",
-            playlistId=playlist_id,
-            maxResults=50,
-            pageToken=page_token,
-        ).execute()
-        items.extend(
-            entry["contentDetails"]["videoId"] for entry in response.get("items", [])
-        )
-        page_token = response.get("nextPageToken")
-        if not page_token:
-            break
+    playlist = youtube.get_playlist(playlist_id, limit=10000)
+    for track in playlist.get("tracks", []):
+        vid = track.get("videoId")
+        if vid:
+            items.append(vid)
     return items
 
 
-def add_video_to_playlist(youtube, playlist_id: str, video_id: str) -> None:
-    body = {
-        "snippet": {"playlistId": playlist_id, "resourceId": {"kind": "youtube#video", "videoId": video_id}}
-    }
+def add_video_to_playlist(youtube: YTMusic, playlist_id: str, video_id: str) -> None:
     try:
-        youtube.playlistItems().insert(part="snippet", body=body).execute()
-    except HttpError as err:
+        youtube.add_playlist_items(playlist_id, [video_id])
+    except Exception as err:
         print(f"Failed to add video {video_id}: {err}")
 
 
@@ -185,11 +142,11 @@ def _append_failed(log_file: str, failed: List[Dict]) -> None:
     Path(log_file).write_text(json.dumps(existing, indent=2, ensure_ascii=False))
 
 
-def like_video(youtube, video_id: str) -> None:
+def like_video(youtube: YTMusic, video_id: str) -> None:
     """Add the given video to the user's liked videos."""
     try:
-        youtube.videos().rate(videoId=video_id, rating="like").execute()
-    except HttpError as err:
+        youtube.rate_song(video_id, "LIKE")
+    except Exception as err:
         print(f"Failed to like video {video_id}: {err}")
 
 
@@ -217,7 +174,10 @@ def sync_liked_songs(youtube, tracks: List[Dict], failed: List[Dict]) -> None:
 
 
 def import_library(library_file: str, failed_log: str = FAILED_LOG_FILE) -> None:
-    print("A browser window will open to authorize your Google account.")
+    print(
+        "If this is your first run you'll be asked to provide YouTube Music "
+        "authentication headers."
+    )
     youtube = get_youtube_client()
     data = json.loads(Path(library_file).read_text())
     failed: List[Dict] = []
