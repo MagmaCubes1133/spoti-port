@@ -1,2 +1,7 @@
 # spoti-port
-Made this cause i was sick of having my massive library of songs locked to spotify. Would love to export a list f my liked songs, playlists, etc and port it all to othe rplatforms like YT music, or make some auto downloader script to get mp3, FLAC, etc audio files. TL;DR, making your music library portable across platforms again
+
+## Mission Statement
+
+**spoti-port** exists to empower users with true ownership and portability of their music libraries. Tired of having your favorite songs, playlists, and collections locked within a single streaming service? This project aims to break down those barriers by enabling you to export your liked songs, playlists, and more from Spotify, and seamlessly transfer them to other platforms such as YouTube Music. Additionally, spoti-port aspires to provide tools for automating the download of your music in high-quality formats like MP3 and FLAC.
+
+**Our mission:** Make your music library truly portable—giving you the freedom to enjoy your collection anywhere, on any platform, and in any format you choose.
