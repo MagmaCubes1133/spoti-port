@@ -171,15 +171,84 @@ def port_playlist(youtube, playlist: Dict, failed: List[Dict]) -> None:
             failed.append({"playlist": playlist["name"], **track})
 
 
+def _append_failed(log_file: str, failed: List[Dict]) -> None:
+    """Append failed entries to the log file preserving previous data."""
+    if not failed:
+        return
+    existing: List[Dict] = []
+    if Path(log_file).exists():
+        try:
+            existing = json.loads(Path(log_file).read_text())
+        except Exception:
+            existing = []
+    existing.extend(failed)
+    Path(log_file).write_text(json.dumps(existing, indent=2, ensure_ascii=False))
+
+
+def like_video(youtube, video_id: str) -> None:
+    """Add the given video to the user's liked videos."""
+    try:
+        youtube.videos().rate(videoId=video_id, rating="like").execute()
+    except HttpError as err:
+        print(f"Failed to like video {video_id}: {err}")
+
+
+def sync_liked_songs(youtube, tracks: List[Dict], failed: List[Dict]) -> None:
+    """Sync Spotify liked songs with YouTube Music saved songs."""
+    existing = set()
+    try:
+        existing = set(get_playlist_items(youtube, "LM"))
+    except Exception:
+        pass
+    for track in tracks:
+        track_name = _decode_string(track["name"])
+        artists = _decode_string(track["artists"])
+        query = f"{track_name} {artists}"
+        video_id = search_video(youtube, query, track["duration_ms"])
+        if video_id:
+            if video_id not in existing:
+                try:
+                    like_video(youtube, video_id)
+                    existing.add(video_id)
+                except Exception:
+                    failed.append({"playlist": "Liked Songs", **track})
+        else:
+            failed.append({"playlist": "Liked Songs", **track})
+
+
 def import_library(library_file: str, failed_log: str = FAILED_LOG_FILE) -> None:
     print("A browser window will open to authorize your Google account.")
     youtube = get_youtube_client()
     data = json.loads(Path(library_file).read_text())
     failed: List[Dict] = []
-    for playlist in data.get("playlists", []):
+
+    # Sync liked songs first
+    if data.get("liked_songs"):
+        print("Syncing liked songs...")
+        sync_liked_songs(youtube, data["liked_songs"], failed)
+
+    playlists = data.get("playlists", [])
+    remaining = playlists[:]
+    while remaining:
+        print("Available playlists:")
+        for idx, pl in enumerate(remaining, 1):
+            print(f"{idx}. {_decode_string(pl['name'])}")
+        choice = input("Select a playlist number to port (blank to finish): ").strip()
+        if not choice:
+            break
+        try:
+            sel = int(choice) - 1
+            playlist = remaining.pop(sel)
+        except (ValueError, IndexError):
+            print("Invalid selection")
+            continue
         port_playlist(youtube, playlist, failed)
+        again = input("Port another playlist? [y/N]: ").strip().lower()
+        if again != "y":
+            break
+
+    _append_failed(failed_log, failed)
     if failed:
-        Path(failed_log).write_text(json.dumps(failed, indent=2))
         print(f"Logged {len(failed)} unmatched tracks to {failed_log}")
 
 
