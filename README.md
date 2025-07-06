@@ -25,11 +25,7 @@ python -m spotiport.export_spotify
 This creates a `spotify_library.json` file containing your liked songs and playlists.
 The credentials you enter will be saved in a local `.env` file for future use.
 
-3. Obtain YouTube credentials by creating an OAuth client in the Google Developer Console and save the file as `client_secret.json` in the project root. When importing, your default browser will open for Google sign in. **Register `http://localhost:8080/` as an authorized redirect URI** so the authentication flow can use a fixed callback URL.
-
-### Enable YouTube Data API v3
-
-Make sure the **YouTube Data API v3** is enabled in the same Google Cloud project where you created the OAuth credentials. If it isn't enabled, the import command will fail with a 403 error indicating that the API is disabled or hasn't been used in your project.
+3. Obtain YouTube credentials by creating an OAuth client in the Google Developer Console and save the file as `client_secret.json` in the project root. When importing, your default browser will open for Google sign in. **Register `http://localhost:8080/` as an authorized redirect URI** so the authentication flow can use a fixed callback URL. The import script relies on [ytmusicapi](https://github.com/sigma67/ytmusicapi) and will store your token locally after the first login, so no further setup is required.
 
 4. Import the library into YouTube Music. The command now asks which parts of
    your library you want to sync—**Liked Songs**, specific playlists, or
