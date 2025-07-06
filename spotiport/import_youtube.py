@@ -5,7 +5,9 @@ from typing import Dict, List
 
 FAILED_LOG_FILE = "failed_tracks.json"
 
-from ytmusicapi import YTMusic, setup_oauth
+
+from ytmusicapi import YTMusic, setup
+
 
 
 def _decode_string(text: str) -> str:
@@ -21,27 +23,18 @@ def _decode_string(text: str) -> str:
 
 
 def get_youtube_client() -> YTMusic:
-    """Authenticate and return a YTMusic client."""
-    token_file = "yt_oauth.json"
-    if Path(token_file).exists():
-        return YTMusic(token_file)
+    """Authenticate and return a YTMusic client using request headers."""
+    headers_file = "headers_auth.json"
+    if Path(headers_file).exists():
+        return YTMusic(headers_file)
 
-    if not Path("client_secret.json").exists():
-        raise RuntimeError(
-            "client_secret.json not found. Create OAuth credentials in the "
-            "Google Developer Console and download the JSON file to this "
-            "directory."
-        )
+    print(
+        "No YouTube authentication headers found. "
+        "Follow the instructions to paste the headers from your browser."
+    )
+    setup(filepath=headers_file)
+    return YTMusic(headers_file)
 
-    data = json.loads(Path("client_secret.json").read_text())
-    info = data.get("installed") or data.get("web") or {}
-    client_id = info.get("client_id")
-    client_secret = info.get("client_secret")
-    if not client_id or not client_secret:
-        raise RuntimeError("client_secret.json is missing client_id or client_secret")
-
-    setup_oauth(client_id, client_secret, filepath=token_file, open_browser=True)
-    return YTMusic(token_file)
 
 
 def search_video(youtube: YTMusic, query: str, duration_ms: int) -> str | None:
@@ -58,6 +51,8 @@ def search_video(youtube: YTMusic, query: str, duration_ms: int) -> str | None:
             continue
         seconds = duration_to_seconds(dur)
         diff = abs(seconds * 1000 - duration_ms)
+        if diff <= 10000:
+            return vid
         if best_diff is None or diff < best_diff:
             best_diff = diff
             best_video = vid
@@ -71,7 +66,6 @@ def duration_to_seconds(duration: str) -> int:
     for p in parts:
         seconds = seconds * 60 + int(p)
     return seconds
-
 
 def create_playlist(youtube: YTMusic, title: str) -> str | None:
     """Create a new playlist and return its ID."""
@@ -182,7 +176,10 @@ def sync_liked_songs(youtube, tracks: List[Dict], failed: List[Dict]) -> None:
 
 
 def import_library(library_file: str, failed_log: str = FAILED_LOG_FILE) -> None:
-    print("A browser window will open to authorize your Google account.")
+    print(
+        "If this is your first run you'll be asked to provide YouTube Music "
+        "authentication headers."
+    )
     youtube = get_youtube_client()
     data = json.loads(Path(library_file).read_text())
     failed: List[Dict] = []
