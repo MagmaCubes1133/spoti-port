@@ -14,7 +14,15 @@
 pip install -r requirements.txt
 ```
 
-2. Export your Spotify library. On first run a browser window will open so you can log into Spotify and authorize the app:
+2. Set your Spotify API credentials as environment variables. You can create a `.env` file with the following variables or export them in your shell:
+
+```bash
+SPOTIPY_CLIENT_ID=your_client_id
+SPOTIPY_CLIENT_SECRET=your_client_secret
+SPOTIPY_REDIRECT_URI=http://localhost:8888/callback
+```
+
+3. Export your Spotify library. On first run a browser window will open so you can log into Spotify and authorize the app:
 
 ```bash
 python -m spotiport.export_spotify
@@ -22,9 +30,9 @@ python -m spotiport.export_spotify
 
 This creates a `spotify_library.json` file containing your liked songs and playlists.
 
-3. Obtain YouTube credentials by creating an OAuth client in the Google Developer Console and save the file as `client_secret.json` in the project root. When importing, your default browser will open for Google sign in.
+4. Obtain YouTube credentials by creating an OAuth client in the Google Developer Console and save the file as `client_secret.json` in the project root. When importing, your default browser will open for Google sign in.
 
-4. Import the library into YouTube Music:
+5. Import the library into YouTube Music:
 
 ```bash
 python -m spotiport.import_youtube spotify_library.json
@@ -33,3 +41,7 @@ python -m spotiport.import_youtube spotify_library.json
 The script creates new playlists prefixed with `spoti-port-` and attempts to match each track by searching YouTube and selecting the result with the closest duration.
 
 Any songs that cannot be matched are saved to `failed_tracks.json` so you can review and handle them later.
+
+## Spotify API Limits
+
+Spotify's Web API enforces rate limits. The exact numbers aren't published, but if too many requests are made in a short time the API will return HTTP `429 Too Many Requests` along with a `Retry-After` header indicating when you can try again. The export script fetches data sequentially so it generally stays well below these limits, but very large libraries may require waiting if a rate limit response is encountered.
