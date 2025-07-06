@@ -19,8 +19,8 @@ def _prompt_for_credentials() -> None:
     client_id = input("Enter your SPOTIPY_CLIENT_ID: ").strip()
     client_secret = input("Enter your SPOTIPY_CLIENT_SECRET: ").strip()
     redirect_uri = input(
-        "Enter SPOTIPY_REDIRECT_URI [http://localhost:8888/callback]: "
-    ).strip() or "http://localhost:8888/callback"
+        "Enter SPOTIPY_REDIRECT_URI [http://127.0.0.1:8888/callback]: "
+    ).strip() or "http://127.0.0.1:8888/callback"
     with open(".env", "a", encoding="utf-8") as f:
         f.write(f"SPOTIPY_CLIENT_ID={client_id}\n")
         f.write(f"SPOTIPY_CLIENT_SECRET={client_secret}\n")

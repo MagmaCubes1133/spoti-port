@@ -40,3 +40,7 @@ Any songs that cannot be matched are saved to `failed_tracks.json` so you can re
 ## Spotify API Limits
 
 Spotify's Web API enforces rate limits. The exact numbers aren't published, but if too many requests are made in a short time the API will return HTTP `429 Too Many Requests` along with a `Retry-After` header indicating when you can try again. The export script fetches data sequentially so it generally stays well below these limits, but very large libraries may require waiting if a rate limit response is encountered.
+
+## YouTube API Limits
+
+YouTube Data API v3 enforces a daily quota system based on "units." By default, each Google Cloud project is granted **10,000 units per day**. Different API requests consume different amounts of units—for example, a search query costs 100 units, while fetching playlist or video details typically costs 1 unit per request. If your application exceeds the daily quota, the API will return a `403 quotaExceeded` error and you will need to wait until the quota resets at midnight Pacific Time. For most users, typical library import operations stay well within these limits, but very large libraries or frequent operations may require careful management of API usage. You can request a quota increase through the Google Cloud Console if needed.
