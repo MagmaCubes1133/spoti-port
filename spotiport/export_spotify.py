@@ -111,7 +111,7 @@ def export_library(output_file: str = "spotify_library.json") -> None:
         "playlists": export_playlists(sp),
     }
     with open(output_file, "w", encoding="utf-8") as f:
-        json.dump(data, f, indent=2)
+        json.dump(data, f, indent=2, ensure_ascii=False)
     print(f"Exported library to {output_file}")
 
 

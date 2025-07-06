@@ -27,15 +27,23 @@ The credentials you enter will be saved in a local `.env` file for future use.
 
 3. Obtain YouTube credentials by creating an OAuth client in the Google Developer Console and save the file as `client_secret.json` in the project root. When importing, your default browser will open for Google sign in. **Register `http://localhost:8080/` as an authorized redirect URI** so the authentication flow can use a fixed callback URL.
 
-4. Import the library into YouTube Music:
+### Enable YouTube Data API v3
+
+Make sure the **YouTube Data API v3** is enabled in the same Google Cloud project where you created the OAuth credentials. If it isn't enabled, the import command will fail with a 403 error indicating that the API is disabled or hasn't been used in your project.
+
+4. Import the library into YouTube Music. The command now syncs your Spotify
+   **Liked Songs** with the saved songs in YouTube Music and lets you choose
+   which playlists to port:
 
 ```bash
 python -m spotiport.import_youtube spotify_library.json
 ```
 
-The script creates new playlists prefixed with `spoti-port-` and attempts to match each track by searching YouTube and selecting the result with the closest duration.
-
-Any songs that cannot be matched are saved to `failed_tracks.json` so you can review and handle them later.
+The script creates new playlists prefixed with `spoti-port-` and attempts to
+match each track by searching YouTube and selecting the result with the closest
+duration. After each playlist completes you're asked if you want to port another
+one. Any songs that cannot be matched are appended to `failed_tracks.json` with
+the playlist name so you can review them later.
 
 ## Spotify API Limits
 
