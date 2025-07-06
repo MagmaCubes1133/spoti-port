@@ -1,5 +1,33 @@
 import json
+import os
 from typing import List, Dict
+
+
+def _load_env(path: str = ".env") -> None:
+    """Load environment variables from a simple .env file if present."""
+    if os.path.exists(path):
+        with open(path, "r", encoding="utf-8") as f:
+            for line in f:
+                if line.strip() and not line.strip().startswith("#") and "=" in line:
+                    key, val = line.strip().split("=", 1)
+                    os.environ.setdefault(key, val)
+
+
+def _prompt_for_credentials() -> None:
+    """Interactively ask the user for Spotify API credentials."""
+    print("Spotify API credentials are required to access your library.")
+    client_id = input("Enter your SPOTIPY_CLIENT_ID: ").strip()
+    client_secret = input("Enter your SPOTIPY_CLIENT_SECRET: ").strip()
+    redirect_uri = input(
+        "Enter SPOTIPY_REDIRECT_URI [http://localhost:8888/callback]: "
+    ).strip() or "http://localhost:8888/callback"
+    with open(".env", "a", encoding="utf-8") as f:
+        f.write(f"SPOTIPY_CLIENT_ID={client_id}\n")
+        f.write(f"SPOTIPY_CLIENT_SECRET={client_secret}\n")
+        f.write(f"SPOTIPY_REDIRECT_URI={redirect_uri}\n")
+    os.environ["SPOTIPY_CLIENT_ID"] = client_id
+    os.environ["SPOTIPY_CLIENT_SECRET"] = client_secret
+    os.environ["SPOTIPY_REDIRECT_URI"] = redirect_uri
 
 import spotipy
 from spotipy.oauth2 import SpotifyOAuth
@@ -10,6 +38,12 @@ SCOPE = "user-library-read playlist-read-private playlist-read-collaborative"
 
 def get_spotify_client() -> spotipy.Spotify:
     """Authenticate and return a Spotify client using OAuth."""
+    _load_env()
+    client_id = os.getenv("SPOTIPY_CLIENT_ID")
+    client_secret = os.getenv("SPOTIPY_CLIENT_SECRET")
+    if not client_id or not client_secret:
+        _prompt_for_credentials()
+
     auth = SpotifyOAuth(scope=SCOPE, open_browser=True)
     return spotipy.Spotify(auth_manager=auth)
 

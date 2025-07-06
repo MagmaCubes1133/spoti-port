@@ -14,6 +14,12 @@ YT_SCOPE = ["https://www.googleapis.com/auth/youtube"]
 
 def get_youtube_client() -> any:
     """Authenticate and return a YouTube API client."""
+    if not Path("client_secret.json").exists():
+        raise RuntimeError(
+            "client_secret.json not found. Create OAuth credentials in the "
+            "Google Developer Console and download the JSON file to this "
+            "directory."
+        )
     flow = InstalledAppFlow.from_client_secrets_file("client_secret.json", YT_SCOPE)
     # Open the user's browser for a graphical login and run a local server to
     # receive the authorization code.
