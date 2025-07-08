@@ -4,3 +4,5 @@ client_secret.json
 .env
 .venv
 .cache
+headers_auth.json
+failed_tracks.json
