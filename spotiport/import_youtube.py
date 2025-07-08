@@ -235,7 +235,7 @@ def sync_liked_songs(youtube, tracks: List[Dict], failed: List[Dict]) -> None:
 def import_library(library_file: str, failed_log: str = FAILED_LOG_FILE) -> None:
     print("A browser window will open to authorize your Google account.")
     youtube = get_youtube_client()
-    data = json.loads(Path(library_file).read_text())
+    data = json.loads(Path(library_file).read_text(encoding="utf-8"))
     failed: List[Dict] = []
 
     liked_songs = data.get("liked_songs", [])
