@@ -2,6 +2,7 @@ import json
 import html
 from pathlib import Path
 from typing import Dict, List
+from difflib import SequenceMatcher
 
 FAILED_LOG_FILE = "failed_tracks.json"
 
@@ -44,21 +45,21 @@ def get_youtube_client() -> any:
 
 
 def search_video(youtube, query: str, duration_ms: int) -> str | None:
-    """Search for a YouTube video matching the query and closest in length."""
+    """Search for a YouTube video matching the query and closest in length and title similarity."""
     try:
         search_response = youtube.search().list(
             q=query,
             type="video",
-            part="id",
+            part="id,snippet",
             maxResults=5,
         ).execute()
     except HttpError as err:
         print(f"YouTube search failed: {err}")
         return None
 
-    best_video = None
-    best_diff = None
+    video_candidates = []
     video_ids = [item["id"]["videoId"] for item in search_response.get("items", [])]
+    video_titles = {item["id"]["videoId"]: item["snippet"]["title"] for item in search_response.get("items", [])}
     if not video_ids:
         return None
     details = youtube.videos().list(part="contentDetails", id=",".join(video_ids)).execute()
@@ -67,10 +68,25 @@ def search_video(youtube, query: str, duration_ms: int) -> str | None:
         duration = item["contentDetails"]["duration"]
         seconds = iso8601_duration_to_seconds(duration)
         diff = abs(seconds * 1000 - duration_ms)
-        if best_diff is None or diff < best_diff:
-            best_diff = diff
-            best_video = vid
-    return best_video
+        if diff <= 10000:  # 10 second tolerance
+            video_candidates.append({
+                "id": vid,
+                "duration_diff": diff,
+                "title": video_titles.get(vid, "")
+            })
+    if not video_candidates:
+        return None
+    # Compute similarity based on song name and artist
+    # The query is always "<track_name> <artists>"
+    best_video = None
+    best_score = -1
+    for candidate in video_candidates:
+        # Use SequenceMatcher to compare the video title to the query
+        score = SequenceMatcher(None, candidate["title"].lower(), query.lower()).ratio()
+        if score > best_score or (score == best_score and (best_video is None or candidate["duration_diff"] < best_video["duration_diff"])):
+            best_score = score
+            best_video = candidate
+    return best_video["id"] if best_video else None
 
 
 def iso8601_duration_to_seconds(duration: str) -> int:
