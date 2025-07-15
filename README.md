@@ -55,6 +55,20 @@ duration. After each item completes you're asked if you want to sync another.
 Any songs that cannot be matched are appended to `failed_tracks.json` so you can
 review them later.
 
+### Browser-based import
+
+If you prefer not to create a Google Cloud project you can use the alternative
+browser-driven script. It launches a temporary browser window so you can log in
+to YouTube Music and automatically captures the required authentication headers.
+Subsequent synchronization runs completely headless:
+
+```bash
+python -m spotiport.import_youtube_browser spotify_library.json
+```
+
+This method uses the unofficial YouTube Music API and Playwright to automate
+requests. Make sure automated access complies with YouTube's Terms of Service.
+
 ## Spotify API Limits
 
 Spotify's Web API enforces rate limits. The exact numbers aren't published, but if too many requests are made in a short time the API will return HTTP `429 Too Many Requests` along with a `Retry-After` header indicating when you can try again. The export script fetches data sequentially so it generally stays well below these limits, but very large libraries may require waiting if a rate limit response is encountered.
