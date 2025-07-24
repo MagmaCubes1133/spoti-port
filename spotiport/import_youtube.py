@@ -3,8 +3,11 @@ import html
 from pathlib import Path
 from typing import Dict, List
 from difflib import SequenceMatcher
+from concurrent.futures import ThreadPoolExecutor
+import threading
 
 FAILED_LOG_FILE = "failed_tracks.json"
+MAX_CONCURRENT_REQUESTS = 3
 
 from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
@@ -171,20 +174,32 @@ def port_playlist(youtube, playlist: Dict, failed: List[Dict]) -> None:
     else:
         existing_videos = set(get_playlist_items(youtube, playlist_id))
 
-    for track in playlist["tracks"]:
+    lock = threading.Lock()
+
+    def process(track: Dict) -> Dict | None:
         track_name = _decode_string(track["name"])
         artists = _decode_string(track["artists"])
         query = f"{track_name} {artists}"
         video_id = search_video(youtube, query, track["duration_ms"])
         if video_id:
-            if video_id not in existing_videos:
-                try:
-                    add_video_to_playlist(youtube, playlist_id, video_id)
-                    existing_videos.add(video_id)
-                except Exception:
-                    failed.append({"playlist": playlist["name"], **track})
-        else:
-            failed.append({"playlist": playlist["name"], **track})
+            with lock:
+                if video_id in existing_videos:
+                    return None
+                existing_videos.add(video_id)
+            try:
+                add_video_to_playlist(youtube, playlist_id, video_id)
+                return None
+            except Exception:
+                with lock:
+                    existing_videos.discard(video_id)
+        return track
+
+    with ThreadPoolExecutor(max_workers=MAX_CONCURRENT_REQUESTS) as ex:
+        results = list(ex.map(process, playlist["tracks"]))
+
+    for r in results:
+        if r:
+            failed.append({"playlist": playlist["name"], **r})
 
 
 def _append_failed(log_file: str, failed: List[Dict]) -> None:
@@ -216,20 +231,33 @@ def sync_liked_songs(youtube, tracks: List[Dict], failed: List[Dict]) -> None:
         existing = set(get_playlist_items(youtube, "LM"))
     except Exception:
         pass
-    for track in tracks:
+
+    lock = threading.Lock()
+
+    def process(track: Dict) -> Dict | None:
         track_name = _decode_string(track["name"])
         artists = _decode_string(track["artists"])
         query = f"{track_name} {artists}"
         video_id = search_video(youtube, query, track["duration_ms"])
         if video_id:
-            if video_id not in existing:
-                try:
-                    like_video(youtube, video_id)
-                    existing.add(video_id)
-                except Exception:
-                    failed.append({"playlist": "Liked Songs", **track})
-        else:
-            failed.append({"playlist": "Liked Songs", **track})
+            with lock:
+                if video_id in existing:
+                    return None
+                existing.add(video_id)
+            try:
+                like_video(youtube, video_id)
+                return None
+            except Exception:
+                with lock:
+                    existing.discard(video_id)
+        return track
+
+    with ThreadPoolExecutor(max_workers=MAX_CONCURRENT_REQUESTS) as ex:
+        results = list(ex.map(process, tracks))
+
+    for r in results:
+        if r:
+            failed.append({"playlist": "Liked Songs", **r})
 
 
 def import_library(library_file: str, failed_log: str = FAILED_LOG_FILE) -> None:
