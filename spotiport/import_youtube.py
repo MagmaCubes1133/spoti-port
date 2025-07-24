@@ -5,8 +5,10 @@ from typing import Dict, List
 from difflib import SequenceMatcher
 from concurrent.futures import ThreadPoolExecutor
 import threading
+from ytmusicapi import YTMusic
 
 FAILED_LOG_FILE = "failed_tracks.json"
+HEADERS_FILE = "headers_auth.json"
 MAX_CONCURRENT_REQUESTS = 3
 
 from google_auth_oauthlib.flow import InstalledAppFlow
@@ -23,6 +25,25 @@ def _decode_string(text: str) -> str:
             pass
     text = html.unescape(text)
     return text
+
+
+def get_ytmusic_client() -> YTMusic:
+    """Return a YTMusic client using saved request headers."""
+    if Path(HEADERS_FILE).exists():
+        return YTMusic(HEADERS_FILE)
+
+    print(
+        "Paste the raw request headers from an authenticated music.youtube.com "
+        "request. Enter an empty line when done."
+    )
+    lines = []
+    while True:
+        line = input()
+        if not line.strip():
+            break
+        lines.append(line.strip())
+    Path(HEADERS_FILE).write_text("\n".join(lines), encoding="utf-8")
+    return YTMusic(HEADERS_FILE)
 
 # YouTube API scope for managing playlists
 YT_SCOPE = ["https://www.googleapis.com/auth/youtube"]
@@ -216,16 +237,17 @@ def _append_failed(log_file: str, failed: List[Dict]) -> None:
     Path(log_file).write_text(json.dumps(existing, indent=2, ensure_ascii=False))
 
 
-def like_video(youtube, video_id: str) -> None:
-    """Add the given video to the user's liked videos."""
+def like_song(ytmusic: YTMusic, video_id: str) -> None:
+    """Simulate pressing the like button on YouTube Music for the video."""
     try:
-        youtube.videos().rate(videoId=video_id, rating="like").execute()
-    except HttpError as err:
+        ytmusic.rate_song(video_id, "LIKE")
+    except Exception as err:
         print(f"Failed to like video {video_id}: {err}")
 
 
 def sync_liked_songs(youtube, tracks: List[Dict], failed: List[Dict]) -> None:
     """Sync Spotify liked songs with YouTube Music saved songs."""
+    ytmusic = get_ytmusic_client()
     existing = set()
     try:
         existing = set(get_playlist_items(youtube, "LM"))
@@ -245,7 +267,7 @@ def sync_liked_songs(youtube, tracks: List[Dict], failed: List[Dict]) -> None:
                     return None
                 existing.add(video_id)
             try:
-                like_video(youtube, video_id)
+                like_song(ytmusic, video_id)
                 return None
             except Exception:
                 with lock:
